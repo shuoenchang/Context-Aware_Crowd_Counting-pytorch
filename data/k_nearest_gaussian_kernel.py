@@ -30,7 +30,7 @@ def better_gaussian_filter_density(img,points):
             pt2d[int(pt[1]),int(pt[0])] = 1.
         else:
             continue
-        if gt_count > 1:
+        if gt_count > 5:
             sigma = (distances[i][1]+distances[i][2]+distances[i][3])*0.1
         else:
             sigma = np.average(np.array(img_shape))/2./2. #case: 1 point
@@ -88,10 +88,10 @@ def gaussian_filter_density(img,points):
 # test code
 if __name__=="__main__":
     # show an example to use function generate_density_map_with_fixed_kernel.
-    # root = '/mnt/sdc/final/Context-Aware_Crowd_Counting-pytorch/data/ShanghaiTech/part_A'
-    # root = '/mnt/sdc/final/Context-Aware_Crowd_Counting-pytorch/data/ShanghaiTech/part_B'
-    # root = '/mnt/sdc/final/Context-Aware_Crowd_Counting-pytorch/data/QNRF'
-    root = '/mnt/sdc/final/Context-Aware_Crowd_Counting-pytorch/data/NWPU'
+    # root = '/mnt/sdc/final/data/ShanghaiTech/part_A'
+    # root = '/mnt/sdc/final/data/ShanghaiTech/part_B'
+    # root = '/mnt/sdc/final/data/QNRF'
+    root = '/mnt/sdc/final/data/NWPU'
     
     # now generate the ShanghaiA's ground truth
     train_img_path = os.path.join(root,'train_data','images')
@@ -106,6 +106,8 @@ if __name__=="__main__":
             img_paths.append(img_path)
             
     for img_path in (img_paths):
+        if os.path.exists(img_path.replace('.jpg','.npz').replace('images','density')):
+            continue
         print(img_path)
         mat = io.loadmat(img_path.replace('.jpg','.mat').replace('images','ground-truth').replace('IMG_','GT_IMG_'))
         img= plt.imread(img_path)#768行*1024列
@@ -116,7 +118,7 @@ if __name__=="__main__":
         # plt.imshow(k,cmap=CM.jet)
         # save density_map to disk
         print(np.sum(k))
-        if(len(points)>0 and int(np.sum(k))/len(points) < 0.75):
+        if(len(points)>5 and int(np.sum(k))/len(points) < 0.75):
             print("better_gaussian")
             k = better_gaussian_filter_density(img,points)
             print(np.sum(k))
@@ -126,7 +128,7 @@ if __name__=="__main__":
     #now see a sample from ShanghaiA
     plt.imshow(Image.open(img_paths[0]))
     
-    gt_file = np.load(img_paths[0].replace('.jpg','.npz').replace('images','density'))
+    gt_file = np.load(img_paths[0].replace('.jpg','.npz').replace('images','density'))['arr_0']
     plt.imshow(gt_file,cmap=CM.jet)
     plt.show()
     print(np.sum(gt_file))# don't mind this slight variation
