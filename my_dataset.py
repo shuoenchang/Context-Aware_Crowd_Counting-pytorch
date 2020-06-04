@@ -40,7 +40,7 @@ class CrowdDataset(Dataset):
             img=img[:,:,np.newaxis]
             img=np.concatenate((img,img,img),2)
 
-        gt_dmap=np.load(os.path.join(self.gt_dmap_root,img_name.replace('.jpg','.npy')))
+        gt_dmap=np.load(os.path.join(self.gt_dmap_root,img_name.replace('.jpg','.npz')))['arr_0']
         
         if random.randint(0,1)==1 and self.phase=='train':
             img=img[:,::-1]#水平翻转
