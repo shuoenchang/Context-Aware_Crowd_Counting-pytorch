@@ -20,6 +20,7 @@ class CANNet(nn.Module):
         self.conv3_2=nn.Conv2d(512,512,kernel_size=1,bias=False)
         self.conv6_1=nn.Conv2d(512,512,kernel_size=1,bias=False)
         self.conv6_2=nn.Conv2d(512,512,kernel_size=1,bias=False)
+        self.sigmoid=nn.Sigmoid()
         if not load_weights:
             mod = models.vgg16(pretrained = True)
             self._initialize_weights()
@@ -37,26 +38,26 @@ class CANNet(nn.Module):
         ave1=nn.functional.adaptive_avg_pool2d(fv,(1,1))
         ave1=self.conv1_1(ave1)
 #        ave1=nn.functional.relu(ave1)
-        s1=nn.functional.upsample(ave1,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
+        s1=nn.functional.interpolate(ave1,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
         c1=s1-fv
         w1=self.conv1_2(c1)
-        w1=nn.functional.sigmoid(w1)
+        w1=self.sigmoid(w1)
         #S=2
         ave2=nn.functional.adaptive_avg_pool2d(fv,(2,2))
         ave2=self.conv2_1(ave2)
 #        ave2=nn.functional.relu(ave2)
-        s2=nn.functional.upsample(ave2,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
+        s2=nn.functional.interpolate(ave2,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
         c2=s2-fv
         w2=self.conv2_2(c2)
-        w2=nn.functional.sigmoid(w2)
+        w2=self.sigmoid(w2)
         #S=3
         ave3=nn.functional.adaptive_avg_pool2d(fv,(3,3))
         ave3=self.conv3_1(ave3)
 #        ave3=nn.functional.relu(ave3)
-        s3=nn.functional.upsample(ave3,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
+        s3=nn.functional.interpolate(ave3,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
         c3=s3-fv
         w3=self.conv3_2(c3)
-        w3=nn.functional.sigmoid(w3)
+        w3=self.sigmoid(w3)
         #S=6
 #        print('fv',fv.mean())
         ave6=nn.functional.adaptive_avg_pool2d(fv,(6,6))
@@ -64,12 +65,12 @@ class CANNet(nn.Module):
         ave6=self.conv6_1(ave6)
 #        print(ave6.mean())
 #        ave6=nn.functional.relu(ave6)
-        s6=nn.functional.upsample(ave6,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
+        s6=nn.functional.interpolate(ave6,size=(fv.shape[2],fv.shape[3]),mode='bilinear')
 #        print('s6',s6.mean(),'s1',s1.mean(),'s2',s2.mean(),'s3',s3.mean())
         c6=s6-fv
 #        print('c6',c6.mean())
         w6=self.conv6_2(c6)
-        w6=nn.functional.sigmoid(w6)
+        w6=self.sigmoid(w6)
 #        print('w6',w6.mean())
         
         fi=(w1*s1+w2*s2+w3*s3+w6*s6)/(w1+w2+w3+w6+0.000000000001)
