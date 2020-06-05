@@ -1,8 +1,10 @@
 from torch.utils.data import Dataset
 import os
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 import torch
+import torch.nn.functional as F
 import cv2
 from torchvision import transforms
 import random
@@ -34,11 +36,16 @@ class CrowdDataset(Dataset):
     def __getitem__(self,index):
         assert index <= len(self), 'index range error'
         img_name=self.img_names[index]
-        img=plt.imread(os.path.join(self.img_root,img_name))/255# convert from [0,255] to [0,1]
+        img=plt.imread(os.path.join(self.img_root,img_name))# convert from [0,255] to [0,1]
         
         if len(img.shape)==2: # expand grayscale image to three channel.
             img=img[:,:,np.newaxis]
             img=np.concatenate((img,img,img),2)
+
+        if img.shape[2]==4: # RGBA to RGB
+            img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+
+        img = img/255
 
         gt_dmap=np.load(os.path.join(self.gt_dmap_root,img_name.replace('.jpg','.npz')))['arr_0']
         
@@ -50,14 +57,27 @@ class CrowdDataset(Dataset):
             ds_rows=int(img.shape[0]//self.gt_downsample)
             ds_cols=int(img.shape[1]//self.gt_downsample)
             img = cv2.resize(img,(ds_cols*self.gt_downsample,ds_rows*self.gt_downsample))
-            img=img.transpose((2,0,1)) # convert to order (channel,rows,cols)
+            # img=img.transpose((2,0,1)) # convert to order (channel,rows,cols)
             gt_dmap=cv2.resize(gt_dmap,(ds_cols,ds_rows))
-            gt_dmap=gt_dmap[np.newaxis,:,:]*self.gt_downsample*self.gt_downsample
+            gt_dmap=gt_dmap[:,:,np.newaxis]*self.gt_downsample*self.gt_downsample
+        
+        if(max(img.shape[0],img.shape[1])>1200): # avoid out of memory
+            ratio = max(img.shape[0], img.shape[1])//800+1
+            img = cv2.resize(img, (img.shape[1]//ratio, img.shape[0]//ratio))
+            gt_dmap = cv2.resize(gt_dmap, (gt_dmap.shape[1]//ratio, gt_dmap.shape[0]//ratio))
+            gt_dmap = gt_dmap[:,:,np.newaxis]*ratio*ratio
 
-            img_tensor=torch.tensor(img,dtype=torch.float)
-            img_tensor=transforms.functional.normalize(img_tensor,mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
-            gt_dmap_tensor=torch.tensor(gt_dmap,dtype=torch.float)
+        
+        img=img.transpose((2,0,1)) # convert to order (channel,rows,cols)
+        img_tensor=torch.tensor(img,dtype=torch.float)
+        if img_tensor.shape[0]!=3:
+            print(img_tensor.shape)
+            print(img_name)
+        img_tensor=transforms.functional.normalize(img_tensor,mean=[0.485, 0.456, 0.406],
+                                    std=[0.229, 0.224, 0.225])
+
+        gt_dmap=gt_dmap.transpose((2,0,1)) # convert to order (channel,rows,cols)                    
+        gt_dmap_tensor=torch.tensor(gt_dmap,dtype=torch.float)
 
         return img_tensor,gt_dmap_tensor
 
